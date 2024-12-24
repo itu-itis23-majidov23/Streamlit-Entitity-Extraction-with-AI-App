@@ -33,7 +33,8 @@ def load_ner_model():
     try:
         ner_pipeline = pipeline("ner", 
                               model="dslim/bert-base-NER",
-                              device="cuda" if torch.cuda.is_available() else "cpu")
+                              device="cuda" if torch.cuda.is_available() else "cpu", 
+                              aggregation_strategy="simple")  # Use simple aggregation strategy
         print("NER model loaded successfully.")
         return ner_pipeline
     except Exception as e:
@@ -94,47 +95,27 @@ def extract_entities(text, ner_pipeline):
     try:
         # Get entities from the text
         entities = ner_pipeline(text)
-        
+
         # Initialize dictionaries for each entity type
         grouped_entities = {
             "Organizations": set(),
             "Locations": set(),
             "Persons": set()
         }
-        
+
         # Group entities by type
-        current_entity = ""
-        current_type = ""
-        
         for entity in entities:
-            # Check if it's the beginning of a new entity
-            if entity['entity'].endswith('-B'):
-                if current_entity:
-                    # Add the previous entity to appropriate group
-                    if current_type == 'ORG':
-                        grouped_entities["Organizations"].add(current_entity.strip())
-                    elif current_type == 'LOC':
-                        grouped_entities["Locations"].add(current_entity.strip())
-                    elif current_type == 'PER':
-                        grouped_entities["Persons"].add(current_entity.strip())
-                
-                # Start new entity
-                current_entity = entity['word']
-                current_type = entity['entity'].split('-')[0]
-            
-            # If it's a continuation of the current entity
-            elif entity['entity'].endswith('-I'):
-                current_entity += " " + entity['word']
-        
-        # Add the last entity if exists
-        if current_entity:
-            if current_type == 'ORG':
-                grouped_entities["Organizations"].add(current_entity.strip())
-            elif current_type == 'LOC':
-                grouped_entities["Locations"].add(current_entity.strip())
-            elif current_type == 'PER':
-                grouped_entities["Persons"].add(current_entity.strip())
-        
+            # Use entity_group when aggregation_strategy="simple"
+            entity_type = entity['entity_group']
+            entity_text = entity['word']
+
+            if entity_type == 'ORG':
+                grouped_entities["Organizations"].add(entity_text)
+            elif entity_type == 'LOC':
+                grouped_entities["Locations"].add(entity_text)
+            elif entity_type == 'PER':
+                grouped_entities["Persons"].add(entity_text)
+
         return grouped_entities
     
     except Exception as e:
@@ -148,8 +129,8 @@ def main():
     st.title("Meeting Transcription and Entity Extraction")
 
     # Replace with your information
-    STUDENT_NAME = "Your Name"
-    STUDENT_ID = "Your Student ID"
+    STUDENT_NAME = "Azizagha Majidov"
+    STUDENT_ID = "150230910"
     st.write(f"**{STUDENT_ID} - {STUDENT_NAME}**")
 
     # Load models
@@ -161,25 +142,29 @@ def main():
         return
 
     # File uploader
-    uploaded_file = st.file_uploader("Upload an audio file", type=['wav'])
-
+    # File uploader with new description
+    st.write("Upload a business meeting audio file to:\n")
+    st.write("1. Transcribe the meeting audio into text.\n",
+             "2. Extract entities (Organizations, Locations, Persons from the transcribed text.\n")
+    uploaded_file = st.file_uploader("Upload an audio file (WAV format)", type=['wav'])
     if uploaded_file is not None:
         # Add a process button
-        if st.button("Process Audio"):
-            with st.spinner("Processing audio file..."):
+        if st.button("Transcribe Audio"):
+            with st.spinner("Transcribing the audio file... This may take a minute."):
                 # Transcribe audio
                 transcription = transcribe_audio(uploaded_file, whisper_model)
                 
                 if transcription:
                     # Display transcription
-                    st.subheader("Transcription")
+                    st.subheader("Transcription:")
                     st.write(transcription)
                     
                     # Extract and display entities
+                    st.spinner("Extracting entities...")
                     entities = extract_entities(transcription, ner_model)
                     
                     if entities:
-                        st.subheader("Extracted Entities")
+                        st.subheader("Extracted Entities:")
                         
                         # Display each entity type
                         for entity_type, entity_set in entities.items():
