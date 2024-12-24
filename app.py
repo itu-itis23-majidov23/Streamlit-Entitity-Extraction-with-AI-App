@@ -1,8 +1,7 @@
 import streamlit as st
 from transformers import pipeline
 import torch
-import os
-import tempfile
+
 
 # ------------------------------
 # Load Whisper Model
@@ -54,16 +53,10 @@ def transcribe_audio(uploaded_file, whisper_pipeline):
         str: Transcribed text from the audio file.
     """
     try:
-        # Create a temporary file to save the uploaded audio
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-            tmp_file.write(uploaded_file.getvalue())
-            tmp_file_path = tmp_file.name
-
-        # Transcribe the audio file with timestamps
-        result = whisper_pipeline(tmp_file_path)
-        
-        # Clean up the temporary file
-        os.unlink(tmp_file_path)
+        # Read audio file
+        audio_file = uploaded_file.read()
+        # Transcribe audio using the Whisper model
+        result = whisper_pipeline(audio_file)        
         
         # Extract text from chunks
         if isinstance(result, dict) and 'chunks' in result:
@@ -142,10 +135,9 @@ def main():
         return
 
     # File uploader
-    # File uploader with new description
     st.write("Upload a business meeting audio file to:\n")
     st.write("1. Transcribe the meeting audio into text.\n",
-             "2. Extract entities (Organizations, Locations, Persons from the transcribed text.\n")
+             "2. Extract entities Organizations, Locations, Persons from the transcribed text.\n")
     uploaded_file = st.file_uploader("Upload an audio file (WAV format)", type=['wav'])
     if uploaded_file is not None:
         # Add a process button
