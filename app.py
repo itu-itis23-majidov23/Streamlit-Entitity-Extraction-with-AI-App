@@ -123,8 +123,7 @@ def main():
 
     # Replace with your information
     STUDENT_NAME = "Azizagha Majidov"
-    STUDENT_ID = "150230910"
-    st.write(f"**{STUDENT_ID} - {STUDENT_NAME}**")
+    st.write(f"**{STUDENT_NAME}**")
 
     # Load models
     whisper_model = load_whisper_model()
